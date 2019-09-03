@@ -60,7 +60,10 @@ var kingEdward = {
       name: 'Elizabeth Marine',
       children: [
         queenElizabeth, 
-        {id: 3, name: 'Margret Wisconsin'}
+        {id: 3, name: 'Margret Wisconsin'},
+        {id: 3, name: 'Margret Sh'},
+        {id: 3, name: 'Margret Sh'},
+        {id: 3, name: 'Margret Sh'},
       ]
     },
     /* {

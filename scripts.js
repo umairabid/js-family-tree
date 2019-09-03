@@ -1,151 +1,146 @@
 function drawFamilyTree(root) {
 
-  // check if we have row
-  // check if we have column
-  // do we need to take a descision on which row-column where node will go
-  // may be there needs to be current row and column concept
-  // and how do we take decision where it needs to go
-  // info: row might tell us about the level of tree
-  // do we draw the tree in depth first way, this will make sense if we know the rol and col where node needs to go and if they already exists
-  // also if we draw siblings from left to right it will help us insert extra spaces
-  // requirement:  if children count are odd their will be one child under the parent and others will be distributed on the sides
-  // requirement: if children is even no child will be under the parent and will be distributed of left and right
-  // requirement: if left node of parent has partner, partner goes left
-  // requirement: if right node of parent has partner, partner goes right (will use color flag for this)
-  
-  // when we process parent we will already know its matrix row and col
-  // parent will create row and col for its children
+  var cursorRow = 0;
+  var cursorCol = 0;
+  var queue = [root]
+  var matrix = [[{
+    color: 1,
+    data: root,
+    isPartner: false,
+    row: cursorRow
+  }]]
 
   root.row = 0;
-  root.col = 0;
-  var queue = [root]
-  var matrix = [[
-    {
-      spacer: false,
-      isPartner: false,
-      data: root,
-      hasPartners: root.partners.length > 0,
-      color: 1
-    }
-  ]]
-  
 
   while(queue.length > 0) {
     var node = queue.shift();
-    var cell = matrix[node.row][node.col];
-    if(!cell) {
-      console.log(node.row, node.col, matrix)
+    cursorRow = node.row;
+    for(var i = 0; i < matrix[cursorRow.length]; i++) {
+      if(matrix[cursorRow][i].data.id === node.id) {
+        cursorCol = i;
+        break;
+      }
     }
-    if(cell.hasPartners) {
-      if(node.partners.length == 1) {
-        if(cell.color == 1) {
-          addPartnerToRight(node, node.partners[0])
-        } else {
-          addPartnerToLeft(node, node.partners[0])
-        }
+    console.log(cursorRow, cursorCol);
+    if(node.partners && node.partners.length > 0) addPartners(node);
+    console.log(matrix);
+  }
+
+  
+
+  function addPartners(node) {
+    if(node.partners.length === 1) {
+      matrix[cursorRow][cursorCol].color === 1 ?
+        addRightPartner(node.partners[0]):
+        addLeftPartner(node.partners[0])
+    } else {
+      addLeftPartner(node.partners[0])
+      addRightPartner(node.partners[1])
+    }
+  }
+
+  function addRightPartner(partner) {
+    if(shouldAddColumn(cursorRow, cursorCol + 1)) addColumnOnRight();
+    matrix[cursorRow][cursorCol + 1] = getPartnerObject(partner)
+    if(shouldAddColumn(cursorRow, cursorCol + 1)) addColumnOnRight();
+    matrix[cursorRow][cursorCol + 1] = {partnerSpace: true}
+    addChildren(partner);
+  }
+     
+  function addLeftPartner(partner) {
+    if(shouldAddColumn(cursorRow, cursorCol - 1)) addColumnOnLeft();
+    matrix[cursorRow][cursorCol - 1] = getPartnerObject(partner)
+    if(shouldAddColumn(cursorRow, cursorCol - 1)) addColumnOnLeft();
+    matrix[cursorRow][cursorCol - 1] = {partnerSpace: true}
+    addChildren(partner);
+  }
+
+  function addChildren(partner) {
+    if(!partner.children) return;
+    var isEven = partner.children.length % 2 === 0;
+    var mid = Math.ceil(partner.children.length / 2) - 1;
+    var color = 0;
+    partner.children.forEach((c, i) => {
+      var col = findPartnerSpaceColofNode(partner);
+      if(i < mid || (i === mid && isEven)) {
+        addLeftChild(cursorRow, col, color, c);
+      }  else if ( i > mid) {
+        color = 1;
+        addRightChild(cursorRow, col, color, c);
       } else {
-        addPartnerToLeft(node, node.partners[0])
-        addPartnerToRight(node, node.partners[1])
+        matrix[cursorRow + 1][col] = {data: c, color}
       }
-    }
-    resetNodeIndexes();
-  }
-
-  console.log(matrix);
-
-  function addPartnerToRight(node, partner) {
-    matrix[node.row].push(
-      {
-        spacer: false,
-        isPartner: true,
-        data: partner,
-        hasPartners: null,
-        color: null
-      }
-    )
-    addChildren(node, partner);
-  }
-
-  function addPartnerToLeft(node, partner) {
-    matrix[node.row].splice(node.col-1 < 0 ? 0 : node.col - 1, 0 , {
-      spacer: false,
-      isPartner: true,
-      data: partner,
-      hasPartners: null,
-      color: null
+      c.row = cursorRow + 1;
+      queue.push(c);
     })
-    addChildren(node, partner)
   }
 
-  function addChildren(node, partner) {
-    if(partner.children) {
-      var isEven = partner.children.length % 2 === 0;
-      var mid = Math.ceil(partner.children.length / 2) - 1;
-      var color = 0;
-      partner.children.forEach((c, i) => {
-        if(i <= mid) {
-          c.row = node.row + 1;
-          c.col = node.col - 1;
-        } else if (i === mid && !isEven) {
-          c.row = node.row + 1;
-          c.col = node.col;
-        } else {
-          c.row = node.row + 1;
-          c.col = node.col + 1;
-          color = 1;
-        }
-        addChild(node, partner, c, color);
-        queue.push(c);
-      })
+  function findPartnerSpaceColofNode(partner) {
+    if(node.partners.length === 1) {
+      if(matrix[cursorRow][cursorCol].color == 1) return cursorCol + 1;
+      else return cursorCol - 1;
+    } else {
+      var rightPartner = matrix[cursorRow][cursorCol + 2];
+      if(rightPartner.data.id === partner.id) return cursorCol + 1;
+      else return cursorCol - 1;
     }
   }
 
-  function addChild(parent, parentPartner, child, color) {
-    if(!matrix[child.row]) matrix.push([]);
+  function addLeftChild(spaceRow, spaceCol, color, child) {
+    var colForChild = spaceCol - 2;
+    var rowForChild = spaceRow + 1;
+    if(colForChild < 0) colForChild = 0;
+    if(!matrix[rowForChild]) addRowBelow();
+    if(shouldAddColumn(rowForChild, colForChild)) {
+      cursorCol = cursorCol + 1;
+      matrix.forEach(row => row.splice(colForChild, 0, {empty: true}))
+    }
+    matrix[rowForChild][colForChild] = {data: child, color}
+  }
 
-    if(child.col < 0) {
-      matrix.forEach((row, index) => {
-        if(index !== child.row) {
-          row.splice(0, 0, null)
-        } else {
-          row.splice(0, 0, getChildCell(...arguments))
-        }
-      })
-    } else if(!matrix[child.row][child.col]) {
-      matrix[child.row][child.col] = getChildCell(...arguments)
-    } else if(matrix[child.row][child.col]){
-      //matrix.forEach((row, index) => row.splice(child.col, 0, null))
-      matrix[child.row][child.col] = getChildCell(...arguments)
+  function addRightChild(spaceRow, spaceCol, color, child) {
+    var colForChild = spaceCol + 2;
+    var rowForChild = spaceRow + 1;
+    if(!matrix[rowForChild]) addRowBelow();
+    if(shouldAddColumn(rowForChild, colForChild)) {
+      matrix.forEach(row => row.splice(colForChild, 0, {empty: true}))
+    }
+    matrix[rowForChild][colForChild] = {data: child, color}
+  }
+
+  function addRowBelow() {
+    matrix.push([])
+    matrix[matrix.length-1].push([]);
+    for(var i = 0; i < matrix[cursorRow].length ; i++) {
+      matrix[matrix.length-1][i] = {empty: true};
     }
   }
 
-  function getChildCell(parent, parentPartner, child, color) {
+  function addColumnOnLeft() {
+    matrix[cursorRow].splice(cursorCol, 0, {empty: true})
+    cursorCol = cursorCol + 1;
+  }
+
+  function addColumnOnRight() {
+    matrix[cursorRow].splice(cursorCol + 1, 0, {empty: true})
+  }
+
+  function shouldAddColumn(row, col) {
+    console.log(row, col)
+    return !matrix[row][col] 
+      || (
+        matrix[row][col] &&
+        !matrix[row][col].empty
+      )
+  }
+
+  function getPartnerObject(data) {
     return {
-      spacer: false,
-      isPartner: false,
-      data: child,
-      hasPartners: child.partners && child.partners.length > 0,
-      color,
-      parentPartner,
-      parent
+      data,
+      isPartner: true,
+      row: cursorRow
     }
-  }
-
-  function resetNodeIndexes() {
-    matrix.forEach((r, ri) => {
-      r.forEach((c, ci) => {
-        const cell = matrix[ri][ci];
-        
-        if(cell && cell.data) {
-          if(cell.data.id == 3) {
-            console.log(ri, ci, cell);
-          } 
-          cell.data.row = ri;
-          cell.data.col = ci;
-          console.log(ri, ci);
-        }
-      })
-    })
   }
 
 }
+
